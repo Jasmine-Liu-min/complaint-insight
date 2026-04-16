@@ -62,6 +62,13 @@ python app.py
 
 浏览器打开 `http://127.0.0.1:5000`。
 
+### 方式三：发给没有 Python 的同事
+
+1. 在你自己电脑上双击 `打包.bat`，等待打包完成（约 5-10 分钟）
+2. 生成的 `dist/kesu_tool/` 文件夹就是完整的便携版（含 Python 环境）
+3. 把这个文件夹整个压缩发给同事
+4. 同事解压后双击里面的 `启动.bat` 就能用，不需要装任何东西
+
 ---
 
 ## 使用流程
@@ -159,7 +166,8 @@ python app.py
 ```
 ├── app.py                  # Flask 后端
 ├── requirements.txt        # Python 依赖
-├── 启动.bat                # Windows 一键启动
+├── 启动.bat                # Windows 双击启动工具
+├── 打包.bat                # 打包免安装版，发给没有 Python 的同事用
 ├── config/
 │   ├── rules.json          # 归因规则
 │   └── stopwords.txt       # 停用词表
