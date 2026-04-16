@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+~$*
+*.xlsx
+*.xls
+*.mp4
+*.png
+*.jpg
+用streamlight/

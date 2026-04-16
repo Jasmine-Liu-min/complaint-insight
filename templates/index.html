@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客诉洞察</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://registry.npmmirror.com/echarts/5.6.0/files/dist/echarts.min.js"></script>
+<script src="https://registry.npmmirror.com/echarts-wordcloud/2.1.0/files/dist/echarts-wordcloud.min.js"></script>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-brand">客诉洞察</div>
+  <div class="topbar-tabs">
+    <button class="tab-btn active" data-tab="upload">上传数据</button>
+    <button class="tab-btn" data-tab="dashboard" disabled>Dashboard</button>
+    <button class="tab-btn" data-tab="detail" disabled>明细表</button>
+    <button class="tab-btn" data-tab="rules">规则管理</button>
+  </div>
+</nav>
+
+<!-- 上传页 -->
+<section id="page-upload" class="page active">
+  <div class="hero">
+    <h1>客诉洞察</h1>
+    <p class="hero-sub">上传 Excel，自动归因分析，生成可视化报告</p>
+  </div>
+  <div class="upload-area" id="dropZone">
+    <div class="upload-icon">📁</div>
+    <p>拖拽 Excel 文件到这里，或 <label for="fileInput" class="upload-link">点击选择</label></p>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+    <p class="upload-hint">支持 .xlsx / .xls 格式</p>
+  </div>
+  <div id="sheetSection" class="card" style="display:none">
+    <h2>选择工作表</h2>
+    <p class="card-desc">该文件包含多个 Sheet，请选择要分析的工作表</p>
+    <div id="sheetButtons" style="display:flex;gap:0.6rem;flex-wrap:wrap"></div>
+  </div>
+  <div id="mappingSection" class="card" style="display:none">
+    <h2>字段映射</h2>
+    <p class="card-desc">告诉我们 Excel 里每一列对应什么</p>
+    <div class="mapping-grid">
+      <div class="mapping-item"><label>时间 <span class="required">*必填</span></label><select id="map-date"><option value="">请选择</option></select></div>
+      <div class="mapping-item"><label>客诉内容 <span class="required">*必填</span></label><select id="map-content"><option value="">请选择</option></select></div>
+      <div class="mapping-item"><label>机型/型号</label><select id="map-model"><option value="">不选择</option></select></div>
+      <div class="mapping-item"><label>已有分类 <span style="color:#999;font-size:0.75rem">映射后可自动细分归因</span></label><select id="map-category"><option value="">不选择</option></select></div>
+      <div class="mapping-item"><label>客服反馈 <span style="color:#999;font-size:0.75rem">映射后纳入文本分析</span></label><select id="map-feedback"><option value="">不选择</option></select></div>
+    </div>
+    <button class="btn-primary" id="btnAnalyze" disabled>开始分析</button>
+  </div>
+  <div id="loadingOverlay" class="loading" style="display:none">
+    <div class="spinner"></div>
+    <p>正在分析中...</p>
+  </div>
+</section>
+
+<!-- Dashboard -->
+<section id="page-dashboard" class="page">
+  <div class="metrics-row" id="metricsRow"></div>
+  <div id="noSubTip" class="card" style="display:none;background:#fafafa;border-color:#ddd">
+    <p style="color:#555;font-size:0.85rem;margin:0"><b>提示：</b>未映射「已有分类」字段，无法进行细分归因和待归因分析。如果你的 Excel 有分类列，请重新上传并映射。</p>
+  </div>
+
+  <div class="charts-grid">
+    <div class="card chart-card">
+      <h3>问题分类分布</h3>
+      <div class="chart-toggle" id="pieToggle">
+        <button class="toggle-btn active" data-pie="category">粗分类</button>
+        <button class="toggle-btn" data-pie="sub">细分归因</button>
+      </div>
+      <div id="chartPie" class="chart-container"></div>
+      <div id="noPie" class="no-data" style="display:none">未映射「已有分类」字段</div>
+    </div>
+    <div class="card chart-card">
+      <h3>机型 TOP 10</h3>
+      <div id="chartModel" class="chart-container"></div>
+      <div id="noModel" class="no-data" style="display:none">未映射「机型」字段</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>客诉趋势</h3>
+    <div class="chart-toggle">
+      <button class="toggle-btn" data-trend="daily">日</button>
+      <button class="toggle-btn active" data-trend="weekly">周</button>
+      <button class="toggle-btn" data-trend="monthly">月</button>
+    </div>
+    <div id="chartTrend" class="chart-container-wide"></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="card chart-card">
+      <h3>词云</h3>
+      <p class="section-desc">客诉文本中出现频率最高的词，字越大出现越多</p>
+      <div id="chartWordcloud" class="wordcloud-container"></div>
+    </div>
+    <div class="card chart-card">
+      <h3>TF-IDF 关键词</h3>
+      <p class="section-desc">TF-IDF 衡量词语对客诉文本的重要程度，分数越高越关键</p>
+      <div id="chartTfidf" class="chart-container"></div>
+    </div>
+  </div>
+
+  <div id="catKeywords" class="card" style="display:none">
+    <h3>各分类关键词</h3>
+    <p class="section-desc">每个问题分类下最具代表性的关键词</p>
+    <div id="catKwContent"></div>
+  </div>
+
+  <div id="unattributed" class="card" style="display:none">
+    <h3>待归因分析</h3>
+    <p class="section-desc">以下是未被规则匹配到的客诉中的高频词，可以据此补充归因规则</p>
+    <div id="unAttrCount" style="margin-bottom:1rem"></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem">
+      <div>
+        <div class="section-title">高频词（点击可快速添加到规则）</div>
+        <div id="unAttrWords" class="word-cloud-mini"></div>
+      </div>
+      <div>
+        <div class="section-title">TF-IDF 关键词</div>
+        <div id="unAttrTfidf"></div>
+      </div>
+    </div>
+    <div style="margin-top:1.2rem">
+      <div class="section-title">待归因客诉样例</div>
+      <div id="unAttrSamples"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 明细表 -->
+<section id="page-detail" class="page">
+  <div class="detail-header">
+    <div>
+      <h2>客诉明细</h2>
+      <span id="detailCount" class="badge"></span>
+    </div>
+    <div class="detail-actions">
+      <input type="text" id="searchInput" class="search-input" placeholder="搜索关键词...">
+      <a href="/api/export" class="btn-primary" id="btnExport">导出 Excel</a>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table id="detailTable">
+      <thead id="detailHead"></thead>
+      <tbody id="detailBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 规则管理 -->
+<section id="page-rules" class="page">
+  <div class="rules-header">
+    <h2>归因规则管理</h2>
+    <p class="card-desc">修改规则后重新上传 Excel 即可生效</p>
+  </div>
+  <div id="rulesList"></div>
+  <div class="card">
+    <h3>添加规则</h3>
+    <div class="rule-form">
+      <input type="text" id="newCat" placeholder="粗分类（如：音效相关问题）">
+      <input type="text" id="newSub" placeholder="细分归因（如：均衡器无效）">
+      <input type="text" id="newKw" placeholder="关键词，逗号分隔（如：均衡器, EQ）">
+      <button class="btn-primary" id="btnAddRule">添加</button>
+    </div>
+  </div>
+</section>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
