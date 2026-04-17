@@ -149,17 +149,22 @@ body {
 .table-wrap {
   background:#fff; border-radius:4px; overflow:hidden;
   border:1px solid #eee;
-  max-height:620px; overflow-y:auto;
+  max-height:620px; overflow-y:auto; overflow-x:auto;
 }
-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+table { width:100%; border-collapse:collapse; font-size:0.85rem; table-layout:fixed; }
 thead { position:sticky; top:0; z-index:1; }
 th {
   background:#fafafa; padding:14px 16px; text-align:left;
   font-weight:600; font-size:0.75rem; color:#888; text-transform:uppercase; letter-spacing:0.05em;
   border-bottom:2px solid #eee;
 }
-td { padding:13px 16px; border-bottom:1px solid #f5f5f5; line-height:1.6; }
+td { padding:13px 16px; border-bottom:1px solid #f5f5f5; line-height:1.6; word-break:break-all; }
 tr:hover td { background:#fafafa; }
+/* 列宽控制 */
+table th:nth-child(1) { width:100px; }  /* 时间 */
+table th:nth-child(2) { width:120px; }  /* 分类 */
+table th:nth-child(3) { width:auto; }   /* 客诉内容 */
+table th:nth-child(4) { width:140px; }  /* 细分归因 */
 
 /* ── Rules ── */
 .rules-header { margin-bottom:2rem; }
@@ -178,6 +183,11 @@ tr:hover td { background:#fafafa; }
   border:1px solid #eee;
 }
 .rule-kw { color:#888; font-size:0.82rem; flex:1; }
+.rule-count {
+  background:#f0f7ff; color:#4A90D9; padding:2px 10px; border-radius:3px;
+  font-size:0.75rem; font-weight:600; white-space:nowrap;
+}
+.rule-count.zero { background:#f5f5f5; color:#bbb; }
 .rule-del {
   border:none; background:none; color:#ccc; font-size:1.1rem; cursor:pointer;
   padding:4px 8px; border-radius:3px; transition:all .2s;

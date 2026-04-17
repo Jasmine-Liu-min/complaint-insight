@@ -56,6 +56,9 @@ def analyze():
     mapping = request.json
     _state["mapping"] = mapping
     df = map_columns(_state["raw_df"].copy(), mapping)
+    import sys
+    print(f"[DEBUG] mapping: {mapping}", file=sys.stderr)
+    print(f"[DEBUG] df.columns: {df.columns.tolist()}", file=sys.stderr)
 
     has_category = "category" in df.columns
     has_model = "model" in df.columns
@@ -119,21 +122,21 @@ def analyze():
                 cat_kw[str(cat)] = [w for w, _ in kws]
         result["category_keywords"] = cat_kw
 
-    # 明细数据
-    detail_cols = ["date", "content"]
-    if has_model:
-        detail_cols.append("model")
-    if has_category:
-        detail_cols.append("category")
-    if has_feedback:
-        detail_cols.append("feedback")
-    if has_sub:
-        detail_cols.append("sub_category")
+    # 明细数据 - 返回所有映射的列
+    detail_cols = []
+    for col in ["date", "content", "model", "category", "feedback", "sub_category"]:
+        if col in df.columns:
+            detail_cols.append(col)
 
     detail = df[[c for c in detail_cols if c in df.columns]].copy()
     if "date" in detail.columns:
         detail["date"] = detail["date"].dt.strftime("%Y-%m-%d").fillna("")
     result["detail"] = detail.fillna("").to_dict(orient="records")
+
+    # 每条规则的命中数
+    if has_sub:
+        sub_counts = df["sub_category"].value_counts().to_dict()
+        result["rule_counts"] = sub_counts
 
     return jsonify(result)
 
@@ -168,6 +171,18 @@ def unattributed():
     tfidf = extract_tfidf_keywords(texts, n=15)
     samples = un["content"].astype(str).head(20).tolist()
     return jsonify(count=len(un), top_words=top, tfidf=tfidf, samples=samples)
+
+
+@app.route("/api/debug")
+def debug():
+    if _state["df"] is None:
+        return jsonify(error="No data")
+    df = _state["df"]
+    detail_cols = [c for c in ["date", "content", "model", "category", "feedback", "sub_category"] if c in df.columns]
+    detail = df[detail_cols].head(1).copy()
+    if "date" in detail.columns:
+        detail["date"] = detail["date"].dt.strftime("%Y-%m-%d").fillna("")
+    return jsonify(detail_cols=detail_cols, first_row=detail.fillna("").to_dict(orient="records"))
 
 
 @app.route("/api/export")

@@ -10,8 +10,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('page-' + btn.dataset.tab).classList.add('active');
-    // 切换tab后resize图表
     Object.values(charts).forEach(c => c && c.resize());
+    if (btn.dataset.tab === 'rules') loadRules();
   });
 });
 
@@ -100,6 +100,7 @@ async function analyze() {
   document.getElementById('page-dashboard').classList.add('active');
   renderDashboard();
   renderDetail();
+  loadRules();
 }
 
 // ── Dashboard ──
@@ -329,6 +330,7 @@ function renderCatKeywords() {
 
 // ── Detail ──
 var COL_NAMES = {date:'时间',content:'客诉内容',model:'机型',category:'分类',feedback:'客服反馈',sub_category:'细分归因'};
+var DETAIL_ORDER = ['date','category','content','sub_category','model','feedback'];
 
 function renderDetail(filter) {
   if (!DATA || !DATA.detail || !DATA.detail.length) return;
@@ -340,7 +342,8 @@ function renderDetail(filter) {
     });
   }
   document.getElementById('detailCount').textContent = rows.length + ' 条';
-  var cols = Object.keys(DATA.detail[0]);
+  var allKeys = Object.keys(DATA.detail[0]);
+  var cols = DETAIL_ORDER.filter(function(c) { return allKeys.indexOf(c) >= 0; });
   document.getElementById('detailHead').innerHTML =
     '<tr>' + cols.map(function(c) { return '<th>' + (COL_NAMES[c]||c) + '</th>'; }).join('') + '</tr>';
   document.getElementById('detailBody').innerHTML =
@@ -356,13 +359,25 @@ async function loadRules() {
   var rules = await res.json();
   var el = document.getElementById('rulesList');
   var entries = Object.entries(rules);
-  if (!entries.length) { el.innerHTML='<div class="card"><p style="color:#8b8b9e">暂无规则</p></div>'; return; }
+  if (!entries.length) { el.innerHTML='<div class="card"><p style="color:#999">暂无规则</p></div>'; return; }
+  var counts = {};
+  if (DATA && DATA.detail) {
+    DATA.detail.forEach(function(r) {
+      var sc = r.sub_category;
+      if (sc) counts[sc] = (counts[sc] || 0) + 1;
+    });
+  }
   el.innerHTML = entries.map(function(e) {
     var cat = e[0], subs = e[1];
     return '<div class="card rule-group"><div class="rule-group-title">' + cat + '</div>' +
       subs.map(function(r,i) {
+        var cnt = counts[r.sub_category] || 0;
+        var badge = cnt > 0
+          ? '<span class="rule-count">' + cnt + ' 条</span>'
+          : '<span class="rule-count zero">0 条</span>';
         return '<div class="rule-item"><span class="rule-sub">' + r.sub_category +
-               '</span><span class="rule-kw">' + r.keywords.join(' · ') +
+               '</span>' + badge +
+               '<span class="rule-kw">' + r.keywords.join(' · ') +
                '</span><button class="rule-del" onclick="deleteRule(\'' + cat.replace(/'/g,"\\'") + '\',' + i + ')">✕</button></div>';
       }).join('') + '</div>';
   }).join('');
